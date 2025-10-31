@@ -6,7 +6,6 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { Plus } from "lucide-react";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
-import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -14,6 +13,7 @@ import { workspaceSchema, WorkspaceSchemaType } from "@/app/schemas/workspace";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { orpc } from "@/lib/orpc";
 import { toast } from "sonner";
+import { isDefinedError } from "@orpc/client";
 
 export function CreateWorkspace() {
   const [open, setOpen] = useState(false);
@@ -40,8 +40,18 @@ const createWorkspaceMutation = useMutation(
       form.reset();
       setOpen(false);
     },
-    onError: () => {
-      toast.error("Failed to create workspace, try again!")
+    onError: (error) => {
+      if (isDefinedError(error)) {
+        if (error.code === "RATE_LIMITED") {
+          toast.error(error.message);
+          return;
+        }
+
+        toast.error(error.message);
+        return;
+      }
+
+      toast.error("Failed to create workspace, try again!");
     },
   })
 )

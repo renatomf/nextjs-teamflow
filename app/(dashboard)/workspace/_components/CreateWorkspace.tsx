@@ -10,12 +10,14 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { workspaceSchema } from "@/app/schemas/workspace";
-
-
+import { workspaceSchema, WorkspaceSchemaType } from "@/app/schemas/workspace";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { orpc } from "@/lib/orpc";
+import { toast } from "sonner";
 
 export function CreateWorkspace() {
   const [open, setOpen] = useState(false);
+  const queryClient = useQueryClient();
 
   const form = useForm({
     resolver: zodResolver(workspaceSchema),
@@ -24,11 +26,29 @@ export function CreateWorkspace() {
     },
   });
  
-  function onSubmit(values: z.infer<typeof workspaceSchema>) {
-    // Do something with the form values.
-    // ✅ This will be type-safe and validated.
-    console.log(values)
-  }
+const createWorkspaceMutation = useMutation(
+  orpc.workspace.create.mutationOptions({
+    onSuccess: (newWorkspace) => {
+      toast.success(
+        `Workspace ${newWorkspace.workspaceName} created successfully`
+      );
+
+      queryClient.invalidateQueries({
+        queryKey: orpc.workspace.list.queryKey()
+      });
+
+      form.reset();
+      setOpen(false);
+    },
+    onError: () => {
+      toast.error("Failed to create workspace, try again!")
+    },
+  })
+)
+
+  function onSubmit(values: WorkspaceSchemaType) {
+    createWorkspaceMutation.mutate(values);
+  };
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -70,8 +90,8 @@ export function CreateWorkspace() {
               )}
             />
 
-            <Button type="submit">
-              Create Workspace
+            <Button disabled={createWorkspaceMutation.isPending} type="submit">
+              {createWorkspaceMutation.isPending ? "Creating..." : "Create Workspace" }
             </Button>
           </form>
         </Form>

@@ -4,14 +4,22 @@ import { WorkspaceHeader } from "./_components/WorkspaceHeader";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { ChannelList } from "./_components/ChannelList";
 import { WorkspaceMembersList } from "./_components/WorkspaceMembersList";
+import { getQueryClient, HydrateClient } from "@/lib/query/hydration";
+import { orpc } from "@/lib/orpc";
 
-const ChannelListLayot = ({}: { children: React.ReactNode }) => {
+const ChannelListLayout = async ({ children }: { children: React.ReactNode }) => {
+  const queryClient = getQueryClient();
+
+  await queryClient.prefetchQuery(orpc.channel.list.queryOptions());
+
   return ( 
     <>
     <div className="flex h-full w-80 flex-col bg-secondary border-r border-border">
       {/* Header */}
       <div className="flex items-center px-4  h-14 border-b border-border">
-        <WorkspaceHeader />
+        <HydrateClient client={queryClient}>
+          <WorkspaceHeader />
+        </HydrateClient>
       </div>
 
       <div className="px-4 py-2">
@@ -26,7 +34,9 @@ const ChannelListLayot = ({}: { children: React.ReactNode }) => {
             <ChevronDown className="zie-4 transition-transform duration-200" />
           </CollapsibleTrigger>
           <CollapsibleContent>
-            <ChannelList />
+            <HydrateClient client={queryClient}>
+              <ChannelList />
+            </HydrateClient>
           </CollapsibleContent>
         </Collapsible>
       </div>
@@ -39,7 +49,9 @@ const ChannelListLayot = ({}: { children: React.ReactNode }) => {
             <ChevronUp className="size-4 transition-transform duration-200" />
           </CollapsibleTrigger>
           <CollapsibleContent>
-            <WorkspaceMembersList />
+            <HydrateClient client={queryClient}>
+              <WorkspaceMembersList />
+            </HydrateClient>
           </CollapsibleContent>
         </Collapsible>
       </div>
@@ -48,4 +60,4 @@ const ChannelListLayot = ({}: { children: React.ReactNode }) => {
    );
 }
  
-export default ChannelListLayot;
+export default ChannelListLayout;

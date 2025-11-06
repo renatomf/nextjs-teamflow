@@ -26,13 +26,13 @@ model Channel {
 model Message {
   id            String   @id @default(uuid())
   content       String
-  imageUrl      String
+  imageUrl      String?  
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
-  authorId      String // Kinde user ID
-  authorEmail   String // User's email
-  authorName    String // Display name
-  authorAvatar  String // Avatar URL
-  Channel       Channel? @relation(fields: [channelId], references: [id])
-  channelId     String?
+  authorId      String
+  authorEmail   String
+  authorName    String
+  authorAvatar  String
+  Channel       Channel  @relation(fields: [channelId], references: [id])
+  channelId     String   
 }

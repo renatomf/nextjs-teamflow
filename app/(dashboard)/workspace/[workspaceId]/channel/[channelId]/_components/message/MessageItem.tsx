@@ -7,14 +7,18 @@ interface Props {
   message: Message;
 }
 
-export function MessageItem({
-  message,
-}: Props) {
-
+export function MessageItem({ message }: Props) {
+  function safeParseContent(content: string) {
+  try {
+    return JSON.parse(content);
+  } catch {
+    return content;
+  }
+}
 
   return (
     <div className="flex space-x-3 relative p-3 rounded-lg group hover:bg-muted/50">
-      <Image 
+      <Image
         src={getAvatar(message.authorAvatar, message.authorEmail)}
         alt="User Avatar"
         width={32}
@@ -30,10 +34,7 @@ export function MessageItem({
               day: "numeric",
               month: "short",
               year: "numeric",
-            }).format(message.createdAt)}
-
-            {" "}
-
+            }).format(message.createdAt)}{" "}
             {new Intl.DateTimeFormat("en-GB", {
               hour12: false,
               hour: "2-digit",
@@ -42,8 +43,23 @@ export function MessageItem({
           </p>
         </div>
 
-        <SafeContent className="text-sm wrap-break-word prose dark:prose-invert max-w-none mark:text-primary" content={JSON.parse(message.content)} />
+        <SafeContent
+          className="text-sm wrap-break-word prose dark:prose-invert max-w-none mark:text-primary"
+          content={safeParseContent(message.content)}
+        />
+
+        {message.imageUrl && (
+          <div className="mt-3">
+            <Image 
+              src={message.imageUrl}
+              alt="Message Attachment"
+              width={512}
+              height={512}
+              className="rounded-md max-h-80 w-auto object-contain"
+            />
+          </div>
+        )}
       </div>
     </div>
-  )
-};
+  );
+}

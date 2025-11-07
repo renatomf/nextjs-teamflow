@@ -1,8 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import arcjet, { createMiddleware, detectBot } from "@arcjet/next";
-import {
-  withAuth,
-} from "@kinde-oss/kinde-auth-nextjs/server";
+import { withAuth } from "@kinde-oss/kinde-auth-nextjs/server";
 import { NextMiddleware, NextRequest, NextResponse } from "next/server";
 
 const aj = arcjet({
@@ -47,7 +45,7 @@ async function existingMiddleware(req: NextRequest) {
 export default createMiddleware(
   aj,
   withAuth(existingMiddleware, {
-    publicPaths: ["/"],
+    publicPaths: ["/", "/api/uploadthing"],
   }) as NextMiddleware
 );
 

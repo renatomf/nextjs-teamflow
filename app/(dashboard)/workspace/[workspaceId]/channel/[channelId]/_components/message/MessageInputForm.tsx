@@ -19,7 +19,6 @@ import { useAttachmentUpload } from "@/hooks/use-attachment-upload";
 
 interface Props {
   channelId: string;
-  content: "";
 }
 
 export function MessageInputForm({ channelId }: Props) {
@@ -31,7 +30,6 @@ export function MessageInputForm({ channelId }: Props) {
     resolver: zodResolver(createMessageSchema),
     defaultValues: {
       channelId: channelId,
-      content: "",
     },
   });
 
@@ -42,7 +40,7 @@ export function MessageInputForm({ channelId }: Props) {
           queryKey: orpc.message.list.key(),
         });
 
-        form.reset({ channelId, content: "" });
+        form.reset({ channelId });
         upload.clear();
         setEditorKey((k) => k + 1);
 

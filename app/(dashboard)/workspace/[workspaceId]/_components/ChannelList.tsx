@@ -25,7 +25,7 @@ export function ChannelList() {
         return (
           <Link
             key={channel.id}
-            href={`/workspace/${workspaceId}/channel/${channelId}`}
+            href={`/workspace/${workspaceId}/channel/${channel.id}`}
             className={buttonVariants({
               variant: "ghost",
               className: cn(

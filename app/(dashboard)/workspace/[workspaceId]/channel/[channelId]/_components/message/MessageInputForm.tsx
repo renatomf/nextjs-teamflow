@@ -2,7 +2,10 @@
 
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { createMessageSchema, CreateMessageSchemaType } from "@/app/schemas/message";
+import {
+  createMessageSchema,
+  CreateMessageSchemaType,
+} from "@/app/schemas/message";
 import {
   Form,
   FormControl,
@@ -11,20 +14,31 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { MessageComposer } from "./MessageComposer";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+  InfiniteData,
+  useMutation,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { orpc } from "@/lib/orpc";
 import { toast } from "sonner";
 import { useState } from "react";
 import { useAttachmentUpload } from "@/hooks/use-attachment-upload";
+import { Message } from "@/lib/generated/prisma/client";
+import { KindeUser } from "@kinde-oss/kinde-auth-nextjs";
+import { getAvatar } from "@/lib/get-avatar";
 
 interface Props {
   channelId: string;
+  user: KindeUser<Record<string, unknown>>;
 }
 
-export function MessageInputForm({ channelId }: Props) {
+type MessagePage = { items: Message[]; nextCursor?: string };
+type InfiniteMessages = InfiniteData<MessagePage>;
+
+export function MessageInputForm({ channelId, user }: Props) {
   const queryClient = useQueryClient();
-  const [ editorKey, setEditorKey ] = useState(0);
-  const upload = useAttachmentUpload()
+  const [editorKey, setEditorKey] = useState(0);
+  const upload = useAttachmentUpload();
 
   const form = useForm({
     resolver: zodResolver(createMessageSchema),
@@ -35,21 +49,109 @@ export function MessageInputForm({ channelId }: Props) {
 
   const createMessageMutation = useMutation(
     orpc.message.create.mutationOptions({
-      onSuccess: () => {
-        queryClient.invalidateQueries({
-          queryKey: orpc.message.list.key(),
+      onMutate: async (data) => {
+        await queryClient.cancelQueries({
+          queryKey: ["message.list", channelId],
         });
 
-        form.reset({ channelId });
+        const previousData = queryClient.getQueryData<InfiniteMessages>([
+          "message.list",
+          channelId,
+        ]);
+
+        const tempId = `optimistic-${crypto.randomUUID()}`;
+
+        const optimisticMessage = {
+          id: tempId,
+          content: data.content,
+          imageUrl: data.imageUrl ?? null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          authorId: user.id,
+          authorEmail: user.email!,
+          authorName: user.given_name ?? "John Doe",
+          authorAvatar: getAvatar(user.picture, user.email!),
+          channelId: channelId,
+        };
+
+        queryClient.setQueryData<InfiniteMessages>(
+          ["message.list", channelId],
+          (old) => {
+            if (!old) {
+              return {
+                pages: [
+                  {
+                    items: [optimisticMessage],
+                    nextCursor: undefined,
+                  },
+                ],
+                pageParams: [undefined],
+              } satisfies InfiniteMessages;
+            }
+
+            const firstPage = old.pages[0] ?? {
+              items: [],
+              nextCursor: undefined,
+            };
+
+            const updatedFirstPage: MessagePage = {
+              ...firstPage,
+              items: [optimisticMessage, ...firstPage.items],
+            };
+
+            return {
+              ...old,
+              pages: [updatedFirstPage, ...old.pages.slice(1)],
+            };
+          }
+        );
+
+        return {
+          previousData,
+          tempId,
+        };
+      },
+      onSuccess: (data, _variables, context) => {
+        queryClient.setQueryData<InfiniteMessages>(
+          ["message.list", channelId],
+          (old) => {
+            if (!old) return old;
+
+            const updatedPages = old.pages.map((page) => ({
+              ...page,
+              items: page.items.map((m) =>
+                m.id === context.tempId
+                  ? {
+                      ...data,
+                    }
+                  : m
+              ),
+            }));
+
+            return {
+              ...old,
+              pages: updatedPages,
+            };
+          },
+        );
+
+        form.reset({ channelId, content: "" });
         upload.clear();
         setEditorKey((k) => k + 1);
 
         return toast.success("Message created successfully");
       },
-      onError: () => {
-        return toast.error("Someting went wrong");
+      onError: (_err, _variables, context) => {
+        if (context?.previousData) {
+          queryClient.setQueryData(
+            ["message.list", channelId],
+            context.previousData
+          );
+        }
+
+        return toast.error("Something went wrong");
       },
-    }),
+    })
   );
 
   function onSubmit(data: CreateMessageSchemaType) {
@@ -57,7 +159,7 @@ export function MessageInputForm({ channelId }: Props) {
       ...data,
       imageUrl: upload.stageUrl ?? undefined,
     });
-  };
+  }
 
   return (
     <Form {...form}>

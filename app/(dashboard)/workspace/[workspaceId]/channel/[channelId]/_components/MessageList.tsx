@@ -13,7 +13,6 @@ import { ChevronDown, Loader2 } from "lucide-react";
 export function MessageList() {
   const [isAtBottom, setIsAtBottom] = useState(false);
   const [hasInitialScrolled, setHasInitialScrolled] = useState(false);
-  const [newMessages, setNewMessages] = useState(false);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const lastItemIdRef = useRef<string | undefined>(undefined);
@@ -153,10 +152,7 @@ export function MessageList() {
           el.scrollTop = el.scrollHeight;
         });
 
-        setNewMessages(false);
         setIsAtBottom(true);
-      } else {
-        setNewMessages(true);
       }
     }
 
@@ -170,7 +166,6 @@ export function MessageList() {
 
     scrollRef.current?.scrollIntoView({ block: "end" });
 
-    setNewMessages(false);
     setIsAtBottom(true);
   };
 

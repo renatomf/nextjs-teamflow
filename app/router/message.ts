@@ -35,6 +35,26 @@ export const createMessage = base
       throw errors.FORBIDDEN();
     }
 
+    // If this ia a thread reply, validate the parent message
+    if (input.threadId) {
+      const parentMessage = await prisma.message.findFirst({
+        where: {
+          id: input.threadId,
+          Channel: {
+            workspaceId: context.workspace.orgCode,
+          },
+        },
+      });
+
+      if (
+        !parentMessage ||
+        parentMessage.channelId !== input.channelId ||
+        parentMessage.threadId !== null
+      ) {
+        throw errors.BAD_REQUEST();
+      }
+    }
+
     const created = await prisma.message.create({
       data: {
         content: input.content,
@@ -44,6 +64,7 @@ export const createMessage = base
         authorEmail: context.user.email!,
         authorName: context.user.given_name!,
         authorAvatar: getAvatar(context.user.picture, context.user.email!),
+        threadId: input.threadId,
       },
     });
 
@@ -93,6 +114,7 @@ export const listMessages = base
     const messages = await prisma.message.findMany({
       where: {
         channelId: input.channelId,
+        threadId: null,
       },
       ...(input.cursor
         ? {
@@ -126,10 +148,12 @@ export const updateMessage = base
     tags: ["Messages"],
   })
   .input(updateMessageSchema)
-  .output(z.object({
-    message: z.custom<Message>(),
-    canEdit: z.boolean(),
-  }))
+  .output(
+    z.object({
+      message: z.custom<Message>(),
+      canEdit: z.boolean(),
+    })
+  )
   .handler(async ({ input, context, errors }) => {
     const message = await prisma.message.findFirst({
       where: {
@@ -164,5 +188,61 @@ export const updateMessage = base
     return {
       message: updated,
       canEdit: updated.authorId === context.user.id,
+    };
+  });
+
+export const listThreadReplies = base
+  .use(requiredAuthMiddleware)
+  .use(requiredWorkspaceMiddleware)
+  .use(standardSecurityMiddleware)
+  .use(heavyWriteSecurityMiddleware)
+  .route({
+    method: "GET",
+    path: "/messages/:messageId/thread",
+    summary: "List replies in a thread",
+    tags: ["Messages"],
+  })
+  .input(z.object({
+    messageId: z.string()
+  }))
+  .output(z.object({
+    parent: z.custom<Message>(),
+    messages: z.array(z.custom<Message>())
+  }))
+  .handler(async ({ input, context, errors }) => {
+    const parentRow = await prisma.message.findFirst({
+      where: {
+        id: input.messageId,
+        Channel: {
+          workspaceId: context.workspace.orgCode,
+        },
+      },
+    });
+
+    if (!parentRow) {
+      throw errors.NOT_FOUND();
+    }
+
+    // Fetch all thread replies
+    const replies = await prisma.message.findMany({
+      where: {
+        threadId: input.messageId,
+      },
+      orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+    });
+
+    const parent = {
+      ...parentRow,
+    };
+
+    const messages = replies.map((r) => ({
+      ...r,
+    }));
+
+
+
+    return {
+      parent,
+      messages,
     };
   });

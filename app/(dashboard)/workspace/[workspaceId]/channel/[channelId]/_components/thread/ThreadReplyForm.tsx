@@ -11,12 +11,17 @@ import { useForm } from "react-hook-form";
 import { MessageComposer } from "../message/MessageComposer";
 import { useAttachmentUpload } from "@/hooks/use-attachment-upload";
 import { useEffect, useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+  InfiniteData,
+  useMutation,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { orpc } from "@/lib/orpc";
 import { toast } from "sonner";
 import { Message } from "@/lib/generated/prisma/client";
 import { KindeUser } from "@kinde-oss/kinde-auth-nextjs";
 import { getAvatar } from "@/lib/get-avatar";
+import { MessageListItem } from "@/lib/types";
 
 interface Props {
   threadId: string;
@@ -51,6 +56,13 @@ export function ThreadReplyForm({ threadId, user }: Props) {
           },
         });
 
+        type MessagePage = {
+          items: Array<MessageListItem>;
+          nextCursor?: string;
+        };
+
+        type InfiniteMessages = InfiniteData<MessagePage>;
+
         await queryClient.cancelQueries({ queryKey: listOptions.queryKey });
 
         const previous = queryClient.getQueryData(listOptions.queryKey);
@@ -78,13 +90,32 @@ export function ThreadReplyForm({ threadId, user }: Props) {
           };
         });
 
+        // Optimistacall bum reliesCount in main message list for th parent message
+        queryClient.setQueryData<InfiniteMessages>(
+          ["message.list", channelId],
+          (old) => {
+            if (!old) return old;
+
+            const pages = old.pages.map((page) => ({
+              ...page,
+              items: page.items.map((m) =>
+                m.id === threadId
+                  ? { ...m, repliesCount: m.repliesCount + 1 }
+                  : m
+              ),
+            }));
+
+            return { ...old, pages }
+          }
+        );
+
         return {
           listOptions,
           previous,
-        }
+        };
       },
       onSuccess: (_data, _vars, ctx) => {
-        queryClient.invalidateQueries({queryKey: ctx.listOptions.queryKey});
+        queryClient.invalidateQueries({ queryKey: ctx.listOptions.queryKey });
 
         form.reset({ channelId, content: "", threadId });
         upload.clear();
@@ -92,16 +123,13 @@ export function ThreadReplyForm({ threadId, user }: Props) {
 
         return toast.success("Message created successfully");
       },
-      onError: (_err,  _vars, ctx) => {
+      onError: (_err, _vars, ctx) => {
         if (!ctx) return;
 
         const { listOptions, previous } = ctx;
 
         if (previous) {
-          queryClient.setQueryData(
-            listOptions.queryKey,
-            previous,
-          )
+          queryClient.setQueryData(listOptions.queryKey, previous);
         }
 
         toast.error("Something went wrong");
@@ -131,6 +159,7 @@ export function ThreadReplyForm({ threadId, user }: Props) {
                   upload={upload}
                   key={editorKey}
                   onSubmit={() => onSubmit(form.getValues())}
+                  isSubmitting={createMessageMutation.isPending}
                 />
               </FormControl>
             </FormItem>

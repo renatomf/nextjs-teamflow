@@ -8,10 +8,7 @@ import prisma from "@/lib/db";
 import { createMessageSchema, updateMessageSchema } from "../schemas/message";
 import { getAvatar } from "@/lib/get-avatar";
 import { Message } from "@/lib/generated/prisma/client";
-
-type MessageListItem = Message & {
-  repliesCount: number;
-};
+import { MessageListItem } from "@/lib/types";
 
 export const createMessage = base
   .use(requiredAuthMiddleware)

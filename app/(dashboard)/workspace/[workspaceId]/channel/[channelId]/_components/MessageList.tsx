@@ -11,8 +11,8 @@ import { EmptyState } from "@/components/general/EmptyState";
 import { ChevronDown, Loader2 } from "lucide-react";
 
 export function MessageList() {
-  const [isAtBottom, setIsAtBottom] = useState(false);
   const [hasInitialScrolled, setHasInitialScrolled] = useState(false);
+  const [isAtBottom, setIsAtBottom] = useState(false);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const lastItemIdRef = useRef<string | undefined>(undefined);
@@ -24,7 +24,7 @@ export function MessageList() {
       cursor: pageParam,
       limit: 30,
     }),
-    queryKey:["message.list", channelId],
+    queryKey: ["message.list", channelId],
     initialPageParam: undefined,
     getNextPageParam: (lastPage) => lastPage.nextCursor,
     select: (data) => ({
@@ -49,7 +49,9 @@ export function MessageList() {
     refetchOnWindowFocus: false,
   });
 
-  const { data: { user } } = useSuspenseQuery(orpc.workspace.list.queryOptions())
+  const {
+    data: { user },
+  } = useSuspenseQuery(orpc.workspace.list.queryOptions());
 
   // Scroll to the bottom when messages first load
   useEffect(() => {
@@ -57,7 +59,7 @@ export function MessageList() {
       const el = scrollRef.current;
 
       if (el) {
-        bottomRef.current?.scrollIntoView({ block: "end" });
+        bottomRef.current?.scrollIntoView({ block: "end", behavior: "smooth" });
         setHasInitialScrolled(true);
         setIsAtBottom(true);
       }
@@ -73,7 +75,7 @@ export function MessageList() {
     const scrollToBottomIfNeeded = () => {
       if (isAtBottom || !hasInitialScrolled) {
         requestAnimationFrame(() => {
-          bottomRef.current?.scrollIntoView({ block: "end" });
+          bottomRef.current?.scrollIntoView({ block: "end", behavior: "smooth" });
         });
       }
     };
@@ -166,7 +168,7 @@ export function MessageList() {
 
     if (!el) return;
 
-    scrollRef.current?.scrollIntoView({ block: "end" });
+    scrollRef.current?.scrollIntoView({ block: "end", behavior: "smooth" });
 
     setIsAtBottom(true);
   };
@@ -189,7 +191,11 @@ export function MessageList() {
           </div>
         ) : (
           items?.map((message) => (
-            <MessageItem key={message.id} message={message} currentUserId={user.id} />
+            <MessageItem
+              key={message.id}
+              message={message}
+              currentUserId={user.id}
+            />
           ))
         )}
 

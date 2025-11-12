@@ -66,7 +66,10 @@ export function ThreadSidebar({ user }: Props) {
     if (prevMessageCount > 0 && messageCount !== prevMessageCount) {
       if (el && isNearBottom(el)) {
         requestAnimationFrame(() => {
-          bottomRef.current?.scrollIntoView({ block: "end", behavior: "smooth" });
+          bottomRef.current?.scrollIntoView({
+            block: "end",
+            behavior: "smooth",
+          });
         });
         setIsAtBottom(true);
       }
@@ -83,7 +86,10 @@ export function ThreadSidebar({ user }: Props) {
     const scrollToBottomIfNeeded = () => {
       if (isAtBottom || !hasInitialScrolled) {
         requestAnimationFrame(() => {
-          bottomRef.current?.scrollIntoView({ block: "end", behavior: "smooth" });
+          bottomRef.current?.scrollIntoView({
+            block: "end",
+            behavior: "smooth",
+          });
         });
       }
     };
@@ -189,7 +195,11 @@ export function ThreadSidebar({ user }: Props) {
           </p>
           <div className="space-y-1">
             {messages.map((reply) => (
-              <ThreadReply key={reply.id} message={reply} />
+              <ThreadReply
+                key={reply.id}
+                selectedThreadId={selectedThreadId!}
+                message={reply}
+              />
             ))}
           </div>
         </div>
